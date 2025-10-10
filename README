@@ -98,6 +98,8 @@ options:
   --voiceGenerator VOICEGENERATOR
                         Module with defined function 'generateVoice(text, outFile)'. Built-in generator use gTTS to generate voice
   -q, --quiet           Does not display any messages while processing
+  --silence SILENCE     Removes the silence between subtitle words. Format: length:threshold:step
+  --voice VOICE         Voice for language if different ones are available.
   
 The rest of the options are auxiliary and are used to test and select the appropriate speech generation parameters for the language.
 
@@ -106,8 +108,6 @@ The rest of the options are auxiliary and are used to test and select the approp
   -p, --preloadOnly     Preload only .mp3 files for specified subtitles (option -k required)
   -u, --usePreloaded    Get .mp3 files for subtitles stored in keepFragment directory (option -k required)
   --verbose VERBOSE     Print info on every subtitle and generated voice
-  --silence SILENCE     Removes the silence between subtitle words. Format: length:threshold:step
-  --voice VOICE         Voice for language if different ones are available.
   --maxSubtitles MAXSUBTITLES
                         Max subtitles for process
   --startSubtitle STARTSUBTITLE
