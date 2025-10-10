@@ -101,7 +101,7 @@ options:
   --silence SILENCE     Removes the silence between subtitle words. Format: length:threshold:step
   --voice VOICE         Voice for language if different ones are available.
   
-The rest of the options are auxiliary and are used to test and select the appropriate speech generation parameters for the language.
+The rest of the options are auxiliary and are used to test program.
 
   -k KEEPFRAGMENTS, --keepFragments KEEPFRAGMENTS
                         Save specified fragments in separate external files. Format: [directory][:list of fragment indexes separated by ',']
