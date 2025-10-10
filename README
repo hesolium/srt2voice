@@ -1,0 +1,138 @@
+# srt2voice
+
+Generates voice-over for the specified subtitle source in .srt format.
+
+Installing.
+-----------
+
+There are two methods to install and run the program:
+
+1. Typically, by running it as a regular Python script after installing all the necessary components (Python interpreter version <= 3.12 and all packages specified in the 'requirements.txt' file).
+In addition, the 'ffmpeg', 'ffprobe', 'mkvmerge', 'mp4box' and 'audio-stretch' programs are required for operation.
+The source for the latter can be found at 'www.github.com/dbry/audio-stretch'.
+
+2. If you don't use Python regulary and don't want to bother with installing all the components needed to run the program, you can download the ready-to-run executable created by 'pyinstaller' for Linux and Windows platforms.
+The program contains all the necessary components for the specified platform. It also contains source files that can be extracted to the current directory [--extract option].
+
+Using.
+------
+
+The simplest way to use it is to specify a subtitle file in .srt format.
+The program will generate an mono audio file in .aac format for the subtitles,
+which can then be played with the movie by specifying the generated file as an additional audio track.
+
+Having access to the original video file [--nativeMedia option] allows for more precise (and more convenient) output generation.
+- subtitles can be extracted directly from the video file.
+- the [--volume r<volume>] option adjusts the volume of the generated speech relative to the volume of the original audio track. In this case program can retrieve a reference audio track directly from the movie file.
+- generated voice-over track can be automatically merged (mixed) with the original movie soundtrack and insert into movie as an additional track [--merge v option].
+- subtitles from an external .srt file can be included in the movie [option --merge vs] as an additional track.
+
+Algorithm.
+----------
+
+    Subtitles are processed sequentially. After optionally reformatting the subtitle file [the --formatter option], the speech generation function is called.
+The [--accelerate, --gapAccelerate] options control the standard acceleration of speech, as gTTS cannot control the speaking rate and the Google narrator speaks too slowly (at least for Polish language:).
+If the speech duration does not fit within the time gap between the start of subsequent subtitles, the current subtitle is combined with the next one, and speech is generated again for the combined text.
+In this case, the time gap for the speech is extended accordingly. If the speech duration does not fit within the calculated range, 
+the speech is accelerated even more, but not more than the minimum values specified in the [--accelerate, --gapAccelerate] options.
+
+    After these operations, the generated speech is added to the resulting audio track. 
+If the time shift of the speech relative to the start of the subtitle display is specified [--shift option], 
+then if the time interval for speech is too short, the shift value is reduced accordingly (down to zero).
+The program never generates negative shifts, meaning the generated speech never starts before the subtitle display.
+During speech generation, the volume of the generated voice can be controlled [--volume option].
+The volume can be changed by a fixed value (in dB) or relative to the volume of the original audio track (also in dB).
+
+    For more precise calculation of the volume of fragments of the original audio track, you can use additional [--silence] option.
+This option specifies standard silence detection parameters (duration in ms, threshold value in dB, and processing step separated by a colon). Default value: 500:-40:10
+Silence detection and removal are used solely to improve the calculation of the volume of the original audio track and do not affect the parameters of the generated speech. 
+
+    After generating the audio fragments for all subtitles, the result is saved to the output file [option --outFile] depending on the values of other parameters [options --nativeMedia --merge].
+When merging the generated audio track with the original audio track from a movie, the output file name can be provided without the extension.
+The program will automatically add the proper extension based on the codec name of the original audio track.
+Merging tracks does not reduce the sound quality. If the original audio is in (e.g.) 5.1 format, when combined with an intermediate .aac (mono) file, it will still be in 5.1 format.
+
+Some parameters specific to the subtitle language can be placed in an additional .ini configuration file.
+The parameters for each language (and optionally voice) are placed in a separate section (see the standard 'srt2voice.ini' file).
+
+As an example of integrating the program with a separate voice generation module, the program includes [edge-gener.py] a voice generator using the Microsoft 'edge-tts' module.
+The Microsoft module is slower but has more options for shaping voice characteristics (pitch, volume, speed) and more voices to choose from.
+
+-------------------------------------------------------------------------------------------------------
+USAGE: srt2voice [-h] -l LANGUAGE [-c CONFIG] [-s SHIFT] [-v VOLUME] [-a ACCELERATE] [-g GAPACCELERATE]
+                 [-o OUTFILE] [-n NATIVEMEDIA] [-t TRACKS] [-m {a,v,vs}] [--formatter FORMATTER]
+                 [--voiceGenerator VOICEGENERATOR] [-k KEEPFRAGMENTS] [-p] [-u] [--verbose VERBOSE] 
+                 [--silence SILENCE] [--voice VOICE] [--maxSubtitles MAXSUBTITLES] 
+                 [--startSubtitle STARTSUBTITLE] [-e] [-q] [--extract] [srtFile]
+
+Positional argument (.srt file name) is not obligatory
+Subtitles and/or original audio track can be extracted directly from video file [-n option]
+
+Optional positional arguments:
+  srtFile               Subtitle file name
+
+options:
+  -h, --help            show this help message and exit
+  -l LANGUAGE, --language LANGUAGE
+                        Subtitle language
+  -c CONFIG, --config CONFIG
+                        Config .ini file with language depended settings. Default 'srt2voice.ini'
+  -s SHIFT, --shift SHIFT
+                        Shift audio in milliseconds
+  -v VOLUME, --volume VOLUME
+                        Speech amplification in dB. If starts with 'r' then volume is relative to original audio volume level (-n option)
+  -a ACCELERATE, --accelerate ACCELERATE
+                        Minimal and regular speed up reading in form minValue:value
+  -g GAPACCELERATE, --gapAccelerate GAPACCELERATE
+                        Minimal and regular silence speed up in form minValue:value
+  -o OUTFILE, --outFile OUTFILE
+                        Output media file or directory. File name can be given without extension. It will be deduced from 'nativeMedia' type.
+  -n NATIVEMEDIA, --nativeMedia NATIVEMEDIA
+                        Original media file
+  -t TRACKS, --tracks TRACKS
+                        Specify tracks in movie to process. Tracks separated by ':'. Track format: <track type 's'/'a'><index> (e.g. -t s2:a3)
+  -m {a,v,vs}, --merge {a,v,vs}
+                        Merge generated audio with original audio[a] or video[v] or video+subtitle[vs] file (require -n option)
+  --formatter FORMATTER
+                        Module for clean SRT file. See default formatter 'cleanSubtitle.py' for details
+  --voiceGenerator VOICEGENERATOR
+                        Module with defined function 'generateVoice(text, outFile)'. Built-in generator use gTTS to generate voice
+  -q, --quiet           Does not display any messages while processing
+  
+The rest of the options are auxiliary and are used to test and select the appropriate speech generation parameters for the language.
+
+  -k KEEPFRAGMENTS, --keepFragments KEEPFRAGMENTS
+                        Save specified fragments in separate external files. Format: [directory][:list of fragment indexes separated by ',']
+  -p, --preloadOnly     Preload only .mp3 files for specified subtitles (option -k required)
+  -u, --usePreloaded    Get .mp3 files for subtitles stored in keepFragment directory (option -k required)
+  --verbose VERBOSE     Print info on every subtitle and generated voice
+  --silence SILENCE     Removes the silence between subtitle words. Format: length:threshold:step
+  --voice VOICE         Voice for language if different ones are available.
+  --maxSubtitles MAXSUBTITLES
+                        Max subtitles for process
+  --startSubtitle STARTSUBTITLE
+                        Start index subtitle for process [index start from 1]
+
+This parameters are only active when the program is launched from an executable created by 'pyinstaller'. 
+  -e EXEC, --exec EXEC  Executes a Python script using the included Python interpreter. 
+                        'run-batch.py' is included into executable as script example
+  --extract             Extract source files from executable package
+
+
+Notes:
+------
+
+1) Modules specified in [--formatter] and [--voiceGenerator] options must be on Python path
+
+2) For merging generated audio with original movie I must use 'mkvmerge' or 'mp4box' program.
+   ffmpeg has 'subtle' bug. Sometimes inserted audio track is playable on computer (smplayer) 
+   but not on my Android TV set (Kodi) or not playable at all.
+
+3) The attached python script (run-batch.py) allows you to batch process any program (including srt2voice) 
+   for a specified list of files (and options)
+   
+   File format:
+   Line started with # are comments
+   Line started with '~' (or first line) specify program name and option constant to every run
+   The remaining lines specify additional options specific to each run.
+   
