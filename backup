@@ -1,6 +1,0 @@
-flist="backup *.py make-release make-release.bat README requirements.txt srt2voice.ini"
-linux_flist="audio-stretch mp4box"
-win_flist="audio-stretch.exe mp4box.exe"
-cp $flist $linux_flist $win_flist /nas/heniek/archiwum/tts/$1
-cp $flist $linux_flist /u/vbox-disk/linux-tts
-cp $flist $win_flist /u/vbox-disk/win-tts
