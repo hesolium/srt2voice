@@ -18,11 +18,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import sys
 import time
 import traceback
+import glob
 
 # hidden imports for other modules
 import shlex
+from argparse import Namespace
+
 import aiohttp
 import edge_tts
+import iso639
 
 def exitMsg(*lst, returnValue=1):
     if lst:
@@ -33,16 +37,37 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 13:
     exitMsg('The program requires Python version 3.12 or lower.')
 
 import os
+
+# nativeEnv = os.environ
+# create modified environment if run from installer
+# def newEnvironment(new_env):
+#     vars_to_save = ["LD_LIBRARY_PATH", "LIBRARY_PATH"]
+#     for v in vars_to_save:
+#         old_var = f"{v}_ORIG"
+#         if old_var in new_env:
+#             # Restore for values saved before start PyInstaller
+#             new_env[v] = new_env[old_var]
+#             del new_env[old_var]
+#         if v in new_env and "/_MEI" in new_env[v]:
+#             del new_env[v]
+#
 frozen = getattr(sys, '_MEIPASS', None)
 if frozen is not None:
     fdir = frozen + os.pathsep
     if fdir not in os.environ["PATH"]:
         os.environ["PATH"] = fdir + os.environ["PATH"]
+    v = "LD_LIBRARY_PATH"
+    old_var = f"{v}_ORIG"
+    if old_var in os.environ: # append (not replace!) frozen temp directory to library path
+        os.environ[v] = os.environ[old_var] + ':' + os.environ[v]
     # print(os.environ["PATH"])
     fdir = os.getcwd()
     if fdir not in os.environ["PATH"]:
         sys.path.insert(-1, fdir)
-    # print(sys.path)
+    # nativeEnv = os.environ.copy()
+    # print('Frozen environment\n', os.environ, '\n')
+    # newEnvironment(nativeEnv)
+    # print('Native environment\n', nativeEnv, '\n')
 
 import iso639
 import argparse
@@ -63,7 +88,7 @@ from gtts import gTTS
 from configparser import ConfigParser
 import runpy
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 MovieTrack = namedtuple('MovieTrack', 'idx, codec_type, codec_name, language, duration')
 tmp_mp3: str = "-tmpSpeech.mp3"
 tmp_wav: str = "-tmpSpeech.wav"
@@ -74,10 +99,9 @@ dir_handle:str = ""
 nativeSpeech: Optional[AudioSegment] = None
 lector: Optional[AudioSegment] = None
 defFrameRate = 24000
-args = None
-
+args: Namespace
 formatIdx = '03d'
-subs:Optional[SubRipFile] = None
+subs: Optional[SubRipFile] = None
 subsCount = 0
 barStyle = {
     "bar":'classic',
@@ -89,9 +113,14 @@ usage = \
 "Positional argument (.srt file name) is not obligatory\n"\
 "Subtitles and/or original audio can be extracted directly from video file (-n option)\n"\
 
-def isEmpty(s, attr: str = None) -> bool:
-    if s and attr:
-        s = getattr(s, attr, None)
+if frozen:
+    usage += "\nTo process multiple files simultaneously, you can use the included 'run-batch.py' script.\n"\
+        "Example usage: srt2voice -e run-batch.py <run control file>\n"\
+        "Format of <run control file> will be show after run script with no arguments specified\n"
+
+def isEmpty(s: str) -> bool:
+    # if s and attr:
+    #     s = getattr(s, attr, None)
     if not s:
         return True
     if type(s) is str:
@@ -697,7 +726,7 @@ def extractSource():
     system = os.name
     files = [
         'README', 'requirements.txt', 'srt2voice.py', 'edge-gener.py', 'make-release', 'srt2voice.ini', 'audio-stretch',
-        'cleanSubtitle.py', 'run-batch.py'
+        'cleanSubtitle.py', 'run-batch.py', 'mp4box'
     ]
     print("Extract source files from package.")
     print(files)
@@ -706,6 +735,9 @@ def extractSource():
         dst = file
         if system == "nt":
             if file == "audio-stretch":
+                src += '.exe'
+                dst += '.exe'
+            if file == "mp4box":
                 src += '.exe'
                 dst += '.exe'
             if file == "make-release":
@@ -871,7 +903,7 @@ def runExternalScript():
 if __name__ == '__main__':
     runExternalScript()
     parser = argparse.ArgumentParser(description=usage, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-l', '--language', required=(frozen is not None and '-e' not in sys.argv and '--extract' not in sys.argv),
+    parser.add_argument('-l', '--language', required=(frozen is None or ('-e' not in sys.argv and '--extract' not in sys.argv)),
             help="Subtitle language")
     parser.add_argument('-c', '--config',
             help="Config .ini file with language depended settings. Default 'srt2voice.ini'")
@@ -926,9 +958,11 @@ if __name__ == '__main__':
     elif subsCount >= 1000:
         formatIdx = '04d'
     title = "Preload speech fragments for subtitles" if args.preloadOnly else "Generate voice-over"
+    charSum = 0
     with alive_bar(subsLen, title=title, length=lgt, disable=args.quiet, **barStyle) as bar:
         while i < stop:
             sent = getSubtitle(i)
+            charSum += len(sent.text)
             if not args.preloadOnly:
                 verbose("--- Voice-over length", len(lector), "ms")
             speech, gap, skip = generateFragment(i)
@@ -962,6 +996,8 @@ if __name__ == '__main__':
                 i += 1
                 if i <= stop:
                     bar()
+    charSum = round(charSum / 1024, 1)
+    quiet(charSum, "KB chars in subtitle file")
     if not args.preloadOnly:
         if not args.merge:
             fFormat = Path(args.outFile).suffix

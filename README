@@ -12,7 +12,8 @@ In addition, the 'ffmpeg', 'ffprobe', 'mkvmerge', 'mp4box' and 'audio-stretch' p
 The source for the latter can be found at 'www.github.com/dbry/audio-stretch'.
 
 2. If you don't use Python regulary and don't want to bother with installing all the components needed to run the program, you can download the ready-to-run executable created by 'pyinstaller' for Linux and Windows platforms.
-The program contains all the necessary components for the specified platform. It also contains source files that can be extracted to the current directory [--extract option].
+The program contains all the necessary Python components for the specified platform and static binary 'mp4box' and 'audio-stretch'. It also contains source files that can be extracted to the current directory [--extract option].
+Rest of required programs ('ffmpeg', 'ffprobe', 'mkvmerge') must be installed separately in supported OS.
 
 Using.
 ------
@@ -130,9 +131,11 @@ Notes:
 
 3) The attached python script (run-batch.py) allows you to batch process any program (including srt2voice) 
    for a specified list of files (and options)
-   
-   File format:
-   Line started with # are comments
-   Line started with '~' (or first line) specify program name and option constant to every run
-   The remaining lines specify additional options specific to each run.
-   
+
+Control file options format.
+First (non comment line) or lines started with '~' specify <program> and global option for every run.
+Line started with '<' define mask (glob) for file selection"
+In program line you can use markers (%file, %dir, %name, %basename, %ext) to build output file path if program produce some.
+Rest lines specify options specify for individual run.
+Comments lines (#) are ignored
+

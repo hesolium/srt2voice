@@ -1,4 +1,4 @@
 pyinstaller --name srt2voice --onefile\
-    --add-data srt2voice.ini:. --add-data requirements.txt:. --add-data README:. --add-data srt2voice.py:. --add-data make-release:.\
-    --add-data run-batch.py:. --add-data cleanSubtitle.py:. --add-data edge-gener.py:. --add-binary audio-stretch:. --add-binary ffmpeg:.\
-    --add-binary ffprobe:. --add-binary mkvmerge:. --add-binary mp4box:. srt2voice.py
+    --add-data srt2voice.ini:. --add-data requirements.txt:. --add-data README:.\
+    --add-data srt2voice.py:. --add-data make-release:. --add-data run-batch.py:. --add-data cleanSubtitle.py:.\
+    --add-data edge-gener.py:. --add-binary audio-stretch:. srt2voice.py --add-binary mp4box:.
